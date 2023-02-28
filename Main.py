@@ -15,53 +15,50 @@ class Main:
         self.board.reset
         #start another game
         self.startGame()
-    
+
     def gameOver(self):
         print(self.board)
         print(self.board.outcome)
 
-    def playMove(self, colour, turnFirst):
+    def playMove(self, colour, turnFirst, boardPrint):
         if turnFirst:
             if colour == "w":
                 self.playHumanMove()
             
             elif colour == "b":
-                self.playEngineMove(ch.BLACK)
+                self.playEngineMove(ch.WHITE)
             
         elif not turnFirst:
             if colour == "w":
-                self.playEngineMove(ch.WHITE)
+                self.playEngineMove(ch.BLACK)
             
             elif colour == "b":
                 self.playHumanMove()
-
+        
+        if boardPrint:
+            print(self.board)
 
     #Player's Turn
     def playHumanMove(self):
         try:
-
             self.printLegalMoves()
 
             play = input("Your move: ")
-            
             self.board.push_san(play)
 
         except:
             self.playHumanMove()
-            
-            print(self.board)
-            print(self.board.outcome())  
-
+            self.gameOver()
 
     #Engine's Turn
     def playEngineMove(self, colour):
-        print("The engine is thinking...")
+        print("Processing...")
 
         engine = ce.Engine(self.board, self.maxDepth, colour)
 
         self.board.push(engine.getBestMove())
 
-    #start a game
+    #Run Game
     def startGame(self):
         # Get player information
 
@@ -72,27 +69,13 @@ class Main:
 
         print(self.board)
 
-
         while not self.board.is_checkmate():
-
-            if colour == "b":
-                self.playEngineMove(ch.WHITE)
-                print(self.board)
-
-                self.playHumanMove()
-                print(self.board)
-
-            if colour == "w":
-                self.playHumanMove()
-                print(self.board)
-
-                self.playEngineMove(ch.BLACK)
-                print(self.board)
-            
-
+                self.playMove(colour, True, True)
+                self.playMove(colour, False, True)
 
         self.gameOver()
         self.resetGame()
+
 
 #create an instance and start a game
 newBoard= ch.Board()

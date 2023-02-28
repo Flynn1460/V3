@@ -4,43 +4,33 @@ import random as rd
 class Engine:
 
     def __init__(self, board, maxDepth, color):
-        self.board=board
-        self.color=color
-        self.maxDepth=maxDepth
-    
-    def getBestMove(self):
-        return self.engine(None, 1)
+        self.board = board
+        self.color = color
+        self.maxDepth = maxDepth
 
     def evalFunct(self):
-        compt = 0
         #Sums up the material values
+
+        compt = 0
         for i in range(64):
-            compt+=self.squareResPoints(ch.SQUARES[i])
-        compt += self.mateOpportunity() + self.openning() + 0.001*rd.random()
+            compt += self.squareResPoints(ch.SQUARES[i])
+
+        compt += self.mateOpportunity() + 0.001 * rd.random()
         return compt
 
     def mateOpportunity(self):
-        if (self.board.legal_moves.count()==0):
-            if (self.board.turn == self.color):
-                return -999
+        if self.board.legal_moves.count() == 0:
+
+            if self.board.turn == self.color:
+                return float("-inf")
+            
             else:
-                return 999
+                return float("inf")
+            
         else:
             return 0
 
-    #to make the engine developp in the first moves
-    def openning(self):
-        if (self.board.fullmove_number<10):
-            if (self.board.turn == self.color):
-                return 1/30 * self.board.legal_moves.count()
-            else:
-                return -1/30 * self.board.legal_moves.count()
-        else:
-            return 0
-
-    #Takes a square as input and 
-    #returns the corresponding Hans Berliner's
-    #system value of it's resident
+    # Attach a square to a value
     def squareResPoints(self, square):
         pieceValue = 0
         if(self.board.piece_type_at(square) == ch.PAWN):
@@ -63,24 +53,23 @@ class Engine:
     def engine(self, candidate, depth):
         
         #reached max depth of search or no possible moves
-        if ( depth == self.maxDepth
-        or self.board.legal_moves.count() == 0):
+        if depth == self.maxDepth or self.board.legal_moves.count() == 0:
             return self.evalFunct()
         
         else:
             #get list of legal moves of the current position
-            moveListe = list(self.board.legal_moves)
+            moveList = list(self.board.legal_moves)
             
             #initialise newCandidate
             newCandidate = None
             #(uneven depth means engine's turn)
-            if(depth % 2 != 0):
+            if depth % 2 != 0:
                 newCandidate = float("-inf")
             else:
                 newCandidate = float("inf")
             
             #analyse board after deeper moves
-            for i in moveListe:
+            for i in moveList:
 
                 #Play move i
                 self.board.push(i)
@@ -123,3 +112,7 @@ class Engine:
             else:
                 #return the move (only on first move)
                 return move
+
+    # Polish Engine
+    def getBestMove(self):
+        return self.engine(None, 1)
