@@ -8,12 +8,22 @@ class Engine:
         self.color = color
         self.maxDepth = maxDepth
 
+        self.pieces = {
+            None : "0",
+            ch.KING : "0",
+            ch.PAWN : "1",
+            ch.BISHOP : "3",
+            ch.KNIGHT : "3",
+            ch.ROOK : "5",
+            ch.QUEEN : "9"
+        }
+
     def evalFunct(self):
         #Sums up the material values
 
         compt = 0
         for i in range(64):
-            compt += self.squareResPoints(ch.SQUARES[i])
+            compt += self.squareValue(i)
 
         compt += self.mateOpportunity() + 0.001 * rd.random()
         return compt
@@ -31,74 +41,67 @@ class Engine:
             return 0
 
     # Attach a square to a value
-    def squareResPoints(self, square):
-        pieceValue = 0
-        if(self.board.piece_type_at(square) == ch.PAWN):
-            pieceValue = 1
-        elif (self.board.piece_type_at(square) == ch.ROOK):
-            pieceValue = 5.1
-        elif (self.board.piece_type_at(square) == ch.BISHOP):
-            pieceValue = 3.33
-        elif (self.board.piece_type_at(square) == ch.KNIGHT):
-            pieceValue = 3.2
-        elif (self.board.piece_type_at(square) == ch.QUEEN):
-            pieceValue = 8.8
+    def squareValue(self, square):
+        pieceValue = int(self.pieces[self.board.piece_type_at(square)])
 
-        if (self.board.color_at(square)!=self.color):
+        if self.board.color_at(square) != self.color:
             return -pieceValue
+        
         else:
             return pieceValue
 
-        
+    # Min Max Algorithm      
     def engine(self, candidate, depth):
         
-        #reached max depth of search or no possible moves
+        #If max depth is reached or no legal moves are possible
         if depth == self.maxDepth or self.board.legal_moves.count() == 0:
+            # Go with our function evaluation
             return self.evalFunct()
         
         else:
-            #get list of legal moves of the current position
             moveList = list(self.board.legal_moves)
-            
-            #initialise newCandidate
-            newCandidate = None
-            #(uneven depth means engine's turn)
-            if depth % 2 != 0:
-                newCandidate = float("-inf")
+            bestMove = None
+            engineTurn = depth % 2 != 0
+
+            #If engine's turn try to maximise the position
+            if not engineTurn:
+                bestMove = float("inf")
+
             else:
-                newCandidate = float("inf")
+                bestMove = float("-inf")
             
             #analyse board after deeper moves
             for i in moveList:
 
-                #Play move i
+                #Play the move in our depth sequence
                 self.board.push(i)
 
-                #Get value of move i (by exploring the repercussions)
-                value = self.engine(newCandidate, depth + 1) 
+                #Rerun the program as a nested function
+                currentMove = self.engine(bestMove, depth + 1) 
 
                 #Basic minmax algorithm:
-                #if maximizing (engine's turn)
-                if(value > newCandidate and depth % 2 != 0):
-                    #need to save move played by the engine
-                    if (depth == 1):
-                        move=i
-                    newCandidate = value
-                #if minimizing (human player's turn)
-                elif(value < newCandidate and depth % 2 == 0):
-                    newCandidate = value
+                #If engine's turn see if the value is better than our best move
+                if currentMove > bestMove and engineTurn:
+
+                    if depth == 1:
+                        move = i
+
+                    bestMove = currentMove
+
+                #If human's turn see if the value is better than our best move
+                elif currentMove < bestMove and not engineTurn:
+                    bestMove = currentMove
 
                 #Alpha-beta prunning cuts: 
                 #(if previous move was made by the engine)
-                if (candidate != None
-                 and value < candidate
-                 and depth % 2 == 0):
+                if candidate != None and currentMove < candidate and not engineTurn:
+
                     self.board.pop()
                     break
+
                 #(if previous move was made by the human player)
-                elif (candidate != None 
-                and value > candidate 
-                and depth % 2 != 0):
+                elif candidate != None and currentMove > candidate and engineTurn:
+                    
                     self.board.pop()
                     break
                 
@@ -106,9 +109,9 @@ class Engine:
                 self.board.pop()
 
             #Return result
-            if (depth>1):
+            if depth > 1:
                 #eturn value of a move in the tree
-                return newCandidate
+                return bestMove
             else:
                 #return the move (only on first move)
                 return move
