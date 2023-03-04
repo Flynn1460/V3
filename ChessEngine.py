@@ -1,12 +1,61 @@
 import chess as ch
 import random as rd
 
-class Engine:
+class OtherFuncs:
+    def  __init__(self):
+        pass
 
-    def __init__(self, board, maxDepth, color):
+    def flipColour(self, colour):
+        if colour == ch.WHITE:
+            return ch.BLACK
+        if colour == ch.BLACK:
+            return ch.WHITE
+
+
+class PieceMaps:
+    def __init__(self, board):
         self.board = board
-        self.color = color
-        self.maxDepth = maxDepth
+
+        self.pieceRef = {
+            "1" : "Pawn",
+            "2" : "Knight",
+            "3" : "Bishop",
+            "4" : "Rook",
+            "5" : "King",
+            "6" : "Queen",
+            "None" : "Blank"
+        }
+
+        self.enginePawnMap =  [
+            .0, .0, .0, .0, .0, .0, .0, .0,
+            .1, .1, .1, .1, .1, .1, .1, .1,
+            .1, .2, .2, .2, .2, .2, .2, .2,
+            .2, .3, .4, .6, .6, .4, .3, .2,
+            .2, .3, .4, .6, .6, .4, .3, .2,
+            .1, .2, .2, .2, .2, .2, .2, .2,
+            .1, .1, .1, .1, .1, .1, .1, .1,
+            .0, .0, .0, .0, .0, .0, .0, .0,
+        ]
+
+    def getSquareItem(self, square):
+        squarePiece = self.pieceRef[str(self.board.piece_type_at(square))]
+
+        if squarePiece == "Pawn":
+            return float(self.enginePawnMap[square])
+        
+        elif squarePiece == "Blank":
+            return 0
+        
+        else:
+            return 0
+
+
+class EvaluatePosition:
+    def __init__(self, board, colour):
+        self.board = board
+        self.colour = colour
+
+        self.littleTools = OtherFuncs()
 
         self.pieces = {
             None : "0",
@@ -18,20 +67,11 @@ class Engine:
             ch.QUEEN : "9"
         }
 
-    def evalFunct(self):
-        #Sums up the material values
-
-        compt = 0
-        for i in range(64):
-            compt += self.squareValue(i)
-
-        compt += self.mateOpportunity() + 0.001 * rd.random()
-        return compt
-
-    def mateOpportunity(self):
+    # Mating Threats
+    def mateOpportunity(self, colour):
         if self.board.legal_moves.count() == 0:
 
-            if self.board.turn == self.color:
+            if self.board.turn == colour:
                 return float("-inf")
             
             else:
@@ -41,24 +81,72 @@ class Engine:
             return 0
 
     # Attach a square to a value
-    def squareValue(self, square):
+    def squareValue(self, square, colour):
         pieceValue = int(self.pieces[self.board.piece_type_at(square)])
 
-        if self.board.color_at(square) != self.color:
-            return -pieceValue
-        
-        else:
+
+        if self.board.color_at(square) == colour:
+            return pieceValue * -1
+    
+        elif self.board.color_at(square) == self.littleTools.flipColour(colour):
             return pieceValue
 
+        else:
+            return 0
+      
+
+
+    # Evaluate the position    
+    def evalPosition(self, colour):
+        #Sums up the material values
+
+        newMap = PieceMaps(self.board)
+
+
+        compt = 0
+        for i in range(64):
+            compt += self.squareValue(i, colour)
+
+        compt += self.mateOpportunity(colour)
+
+        return compt
+
+
+class Engine:
+
+    def __init__(self, board, maxDepth):
+        self.board = board
+        self.maxDepth = maxDepth
+        self.totPossMoves = 0
+
+        self.littleTools = OtherFuncs()
+
+    def alphaBetaPruning(self, candidate, currentMove, engineTurn):
+        #Alpha-beta prunning cuts: 
+        #(if previous move was made by the engine)
+        if candidate != None and currentMove < candidate and not engineTurn:
+            self.board.pop()
+            return
+
+        #(if previous move was made by the human player)
+        elif candidate != None and currentMove > candidate and engineTurn:
+            self.board.pop()
+            return
+
     # Min Max Algorithm      
-    def engine(self, candidate, depth):
+    def engine(self, candidate, depth, colour):
         
         #If max depth is reached or no legal moves are possible
         if depth == self.maxDepth or self.board.legal_moves.count() == 0:
             # Go with our function evaluation
-            return self.evalFunct()
+            self.totPossMoves += 1
+
+            boardEval = EvaluatePosition(self.board, colour)
+
+            return boardEval.evalPosition(self)
         
         else:
+
             moveList = list(self.board.legal_moves)
             bestMove = None
             engineTurn = depth % 2 != 0
@@ -77,7 +165,7 @@ class Engine:
                 self.board.push(i)
 
                 #Rerun the program as a nested function
-                currentMove = self.engine(bestMove, depth + 1) 
+                currentMove = self.engine(bestMove, depth + 1, self.littleTools.flipColour(colour)) 
 
                 #Basic minmax algorithm:
                 #If engine's turn see if the value is better than our best move
@@ -92,18 +180,7 @@ class Engine:
                 elif currentMove < bestMove and not engineTurn:
                     bestMove = currentMove
 
-                #Alpha-beta prunning cuts: 
-                #(if previous move was made by the engine)
-                if candidate != None and currentMove < candidate and not engineTurn:
-
-                    self.board.pop()
-                    break
-
-                #(if previous move was made by the human player)
-                elif candidate != None and currentMove > candidate and engineTurn:
-                    
-                    self.board.pop()
-                    break
+                self.alphaBetaPruning(candidate, currentMove, engineTurn)
                 
                 #Undo last move
                 self.board.pop()
@@ -117,5 +194,10 @@ class Engine:
                 return move
 
     # Polish Engine
-    def getBestMove(self):
-        return self.engine(None, 1)
+    def getBestMove(self, colour):
+        engineResults = self.engine(None, 1, colour)
+
+        print(self.maxDepth, " - ", self.totPossMoves)
+        self.totPossMoves = 0
+
+        return engineResults

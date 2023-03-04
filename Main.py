@@ -1,38 +1,47 @@
-import ChessEngine as ce
-import chess as ch
+import chess as ch, ChessEngine as ce
 
 class Main:
 
-    def __init__(self, board=ch.Board):
+    def __init__(self, board):
         self.board = board
+        self.colour, self.maxDepth = None, -1
+        self.gamePlayer = 1
 
     def printLegalMoves(self):
         print("\nLegal Move List : " + str(self.board.legal_moves)[37:-1])
-        pass
 
     def resetGame(self):
-        #reset the board
         self.board.reset
-        #start another game
         self.startGame()
+        self.colour, self.maxDepth = ch.WHITE, None
 
     def gameOver(self):
         print(self.board)
         print(self.board.outcome)
 
-    def playMove(self, colour, turnFirst, boardPrint):
-        if turnFirst:
-            if colour == "w":
+    def playMove(self, turnFirst, boardPrint):
+        if turnFirst ==  "comp":
+            self.playEngineMove(ch.WHITE)
+            print(self.board)
+            self.playEngineMove(ch.BLACK)
+
+
+        elif turnFirst:
+            if self.colour == "w":
                 self.playHumanMove()
             
-            elif colour == "b":
+            elif self.colour == "b":
+
+                self.colour = "w"
                 self.playEngineMove(ch.WHITE)
             
         elif not turnFirst:
-            if colour == "w":
+            if self.colour == "w":
+
+                self.colour = "b"
                 self.playEngineMove(ch.BLACK)
             
-            elif colour == "b":
+            elif self.colour == "b":
                 self.playHumanMove()
         
         if boardPrint:
@@ -43,41 +52,67 @@ class Main:
         try:
             self.printLegalMoves()
 
-            play = input("Your move: ")
+            play = input("Your move : ")
             self.board.push_san(play)
 
         except:
             self.playHumanMove()
-            self.gameOver()
 
     #Engine's Turn
     def playEngineMove(self, colour):
         print("Processing...")
 
-        engine = ce.Engine(self.board, self.maxDepth, colour)
+        engine = ce.Engine(self.board, self.maxDepth)
 
-        self.board.push(engine.getBestMove())
+        self.board.push(engine.getBestMove(colour))
 
     #Run Game
     def startGame(self):
         # Get player information
 
-        colour, self.maxDepth = None, None
-        while colour != "b" and colour != "w" and not isinstance(self.maxDepth, int):
-            colour = input("Play as (type 'b' or 'w'): ")
-            self.maxDepth = int(input("Choose depth: "))+1 # Note: Depth needs to be bumped by 1 to prevent errors
+        while True:
+            try:
+                self.gamePlayer = int(input("Singleplayer (1), Computer vs Computer (0) : "))
+                if self.gamePlayer == 0 or self.gamePlayer == 1:
+                    self.gamePlayer = bool(self.gamePlayer)
+                    break
+                    
+                else:
+                    continue
+            
+            except:
+                continue
 
-        print(self.board)
+        while not self.maxDepth > 1:
+            try:
+                if self.gamePlayer:
+                    while self.colour != "w" and self.colour != "b":
+                        self.colour = input("Play as (type 'w' or 'b'): ")
+
+                self.maxDepth = int(input("Choose engine depth (recommended 4) : ")) # Note: Depth needs to be bumped by 1 to prevent errors
+
+            except ValueError:
+                print("ERROR: Invalid Depth, set value to 4")
+                self.maxDepth = 4
+
+
+        print(str(self.board)+"\n")
+
+
 
         while not self.board.is_checkmate():
-                self.playMove(colour, True, True)
-                self.playMove(colour, False, True)
+            if not self.gamePlayer:
+                self.playMove("comp", True)
+
+            if self.gamePlayer:
+                self.playMove(True, True)
+                self.playMove(False, True)
 
         self.gameOver()
         self.resetGame()
 
 
 #create an instance and start a game
-newBoard= ch.Board()
+newBoard = ch.Board()
 game = Main(newBoard)
-bruh = game.startGame()
+runGame = game.startGame()
